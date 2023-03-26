@@ -1,30 +1,20 @@
-<h1>Registration page</h1>
-
-<p>Register here by entering your username and password</p>
+<h1>Register</h1>
 <form action="/register" method="POST">
-    <div>
-        <label for="name">Name</label>
-        <input type="text" id="name" name="name">
-    </div>
-    <div>
-        <label for="password">Password</label>
-        <input type="text" id="password" name="password">
-    </div>
-    <div>
-        <label for="passwordConfirm">Confirm password</label>
-        <input type="text" id="passwordConfirm" name="passwordConfirm">
-    </div>
-    <button type="submit">Register</button>
+  <div>
+    <label for="userId">User id</label>
+    <input type="text" id="userId" name="userId" required>
+  </div>
+  <div>
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" required>
+  </div>
+  <div>
+    <label for="role">Role</label>
+    <select name="role" id="role">
+      <option value="teacher">Teacher</option>
+      <option value="student">Student</option>
+    </select>
+  </div>
+  <button type="submit">Register</button>
 </form>
-
-<%if (typeof validPwd != "undefined" && !(validPwd === 'true')) { %>
-<p> The passwords did not match! Please try again. </p>
-<% } %>
-<% if (typeof validUser !== "undefined" && !(validUser === 'true')) { %>
-<p> Username is already in use, please try another one.</p>
-<% } %>
-<div id="footer">
-    <form action="/LOGIN">
-        <input type="submit" value="Existing account? Log-in here" />
-    </form>
-</div> 
+<a href="/identify">LOGIN</a>
