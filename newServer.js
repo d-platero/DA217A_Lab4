@@ -20,8 +20,12 @@ function authenticateToken(req,rest,next){
     }
 }
 
-app.get('/', (req, res) => {
-    const username = req.body.password
+app.get('/', (req,res) => {
+    res.redirect('/identify')
+})
+
+app.post('/identify', (req, res) => {
+    const username = req.body.userId
     const token = jwt.sign(username, process.env.ACCESS_TOKEN_SECRET)
     currentKey = token
     currentPassword = username      // remember to hash password
@@ -34,6 +38,10 @@ app.get('/identify', (req, res) => {
 
 app.get('/granted', authenticateToken, (req, res) => {
     res.render('start.ejs')
+})
+
+app.get('/admin', (req, res) => {
+    res.render('admin.ejs')
 })
 
 app.listen(8000)
