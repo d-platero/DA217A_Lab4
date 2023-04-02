@@ -23,12 +23,10 @@ db.serialize(async () => {
 - User3, userID: id3, name: user3, role: teacher and password: password3
 - Admin, userID: admin, name: admin, role: admin and password: admin */
 
-module.exports = { db, verifyUser, registerUser, checkUser };
+module.exports = { db, verifyUser, userExists, registerUser, checkUser };
 
 
-// TODO: Move bcrypt password hashing to server script
 async function verifyUser(userName, password){
-    let encryptedPwd = await bcrypt.hash(password,10)
     return new Promise((resolve, reject) => {
     let stmt = db.prepare(`SELECT users.password FROM users WHERE (?)=users.name AND (?)=users.password`)
     stmt.all([userName, password], (err, row) => {
@@ -41,14 +39,14 @@ async function verifyUser(userName, password){
 async function userExists(userName){
     return new Promise((resolve, reject) => {
         let stmt = db.prepare(`SELECT users.name FROM users WHERE (?)=users.name`)
-        stmt.all(userName, (err, row) => {
+        stmt.get(userName, (err, row) => {
             resolve(row)
         })
+        stmt.finalize()
     })
 }
 
 async function registerUser(userID, role, userName, password){
-    let encryptedPwd = await bcrypt.hash(password,10)
     return new Promise((resolve, reject) =>{
         let stmt = db.prepare(`INSERT INTO users(userID, role, name, password) VALUES ((?), (?), (?), (?))`)
         stmt.run([userID,role,userName,password], (err, row) => {
@@ -58,10 +56,10 @@ async function registerUser(userID, role, userName, password){
     })
 }
 
-async function checkUser(userName){
+async function getUserRole(userName){
     return new Promise((resolve, reject) => {
-        let stmt = db.prepare(`SELECT users.name FROM users WHERE (?)=users.name`)
-        stmt.all([userName], (err, row) => {
+        let stmt = db.prepare(`SELECT users.role FROM users WHERE (?)=users.name`)
+        stmt.get(userName, (err, row) => {
             resolve(row)
         })
         stmt.finalize()

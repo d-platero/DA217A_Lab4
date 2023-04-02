@@ -1,6 +1,7 @@
 const express = require('express')
 const app = express()
 const jwt = require('jsonwebtoken')
+const bcrypt = require('bcrypt')
 require('dotenv').config()
 
 app.set('view-engine', 'ejs')
@@ -24,11 +25,11 @@ app.get('/', (req,res) => {
     res.redirect('/identify')
 })
 
-app.post('/identify', (req, res) => {
+app.post('/identify', async (req, res) => {
     const username = req.body.userId
     const token = jwt.sign(username, process.env.ACCESS_TOKEN_SECRET)
     currentKey = token
-    currentPassword = username      // remember to hash password
+    currentPassword = await bcrypt.hash(req.body.password,10)
     res.redirect("/granted")
 })
 
