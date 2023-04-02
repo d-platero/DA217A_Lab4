@@ -25,6 +25,8 @@ db.serialize(async () => {
 
 module.exports = { db, verifyUser, registerUser, checkUser };
 
+
+// TODO: Move bcrypt password hashing to server script
 async function verifyUser(userName, password){
     let encryptedPwd = await bcrypt.hash(password,10)
     return new Promise((resolve, reject) => {
@@ -34,6 +36,15 @@ async function verifyUser(userName, password){
     })
     stmt.finalize()
 })
+}
+
+async function userExists(userName){
+    return new Promise((resolve, reject) => {
+        let stmt = db.prepare(`SELECT users.name FROM users WHERE (?)=users.name`)
+        stmt.all(userName, (err, row) => {
+            resolve(row)
+        })
+    })
 }
 
 async function registerUser(userID, role, userName, password){
