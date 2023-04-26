@@ -11,13 +11,22 @@ app.use(express.json())
 var currentKey = "" // Retrieve from user's JWT via HTTP header
 var currentPassword = ""
 
-function authenticateToken(req,rest,next){
-    if(currentKey == ""){
-        res.redirect("/identify")
-    } else if(jwt.verify(currentKey, process.env.ACCESS_TOKEN_SECRET)){
+function authenticateToken(req,res,next){
+    try {
+        let authHeader = req.headers.authorization
+        if(!req.headers.authorization){
+            res.status(401).redirect("/identify")
+        } 
+        let token = authHeader.split(' ')[1]
+        let user = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err,user) >= {
+            if (err){
+                return res.status(401).redirect('/identify')
+            }
+        })
         next()
-    } else{
-        res.redirect("/identify")
+    }
+    catch(err){
+        res.status(401).json(err.message)
     }
 }
 
@@ -29,22 +38,14 @@ app.post('/identify', async (req, res) => {
 
     if(req.body.name !== "" && req.body.password !== "" && !!(await db.userExists(req.body.userId))){
         try{       
-            const username = req.body.userId    
-            let token = jwt.sign(username, process.env.ACCESS_TOKEN_SECRET)  // Send JWT to user via HTTP response
             let currentPassword = await bcrypt.hash(req.body.password,10)
-            let val = await db.verifyUser(req.body.name, currentPassword)
-            
-            if (Object.keys(val).length == 0 && !(await bcrypt.compare(currentPassword, val.password))){
+            if (await db.verifyUser(req.body.name, currentPassword)){   // if user input does not match DB entry
                 res.render('fail.ejs')
             }
-            else if(tokenArray.indexOf(token) === -1){
-                currentKey = token
-                res.redirect("/granted")
-                tokenArray.push(token)
-                console.log("JWT: "+ token)
-            }
             else{
-                res.render('fail.ejs', {alreadyLoggedIn: true}) // TODO: Get username from token and redirect to appropriate view
+                const data = {id: req.body.userId, name: req.body.name, role: await db.getRole(req.body.userId) }
+                let token = jwt.sign(username, process.env.ACCESS_TOKEN_SECRET)  // Send JWT to user via HTTP response
+                res.json({JWT: token}).status(200).redirect("/granted")
             }
         }
         catch (e){

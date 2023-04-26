@@ -23,14 +23,15 @@ db.serialize(async () => {
 - User3, userID: id3, name: user3, role: teacher and password: password3
 - Admin, userID: admin, name: admin, role: admin and password: admin */
 
-module.exports = { db, verifyUser, userExists, registerUser };
+module.exports = { db, verifyUser, userExists, registerUser, getUserRole };
 
 
 async function verifyUser(userId, password){
     return new Promise((resolve, reject) => {
     let stmt = db.prepare(`SELECT users.password FROM users WHERE (?)=users.userID AND (?)=users.password`)
-    stmt.get([userId, password], (err, row) => {
-        resolve(row)
+    stmt.get([userId, password], async (err, row) => {
+        let result = Object.keys(val).length == 0 && !(await bcrypt.compare(row.password, val.password))
+        resolve(result)
     })
     stmt.finalize()
 })
@@ -60,7 +61,7 @@ async function getUserRole(userName){
     return new Promise((resolve, reject) => {
         let stmt = db.prepare(`SELECT users.role FROM users WHERE (?)=users.name`)
         stmt.get(userName, (err, row) => {
-            resolve(row)
+            resolve(row.role)
         })
         stmt.finalize()
     })
