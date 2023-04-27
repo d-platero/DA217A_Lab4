@@ -44,7 +44,7 @@ app.post('/identify', async (req, res) => {
                 res.render('fail.ejs')
             }
             else{
-                let token = jwt.sign({name: req.body.name, role: await db.getUserRole(req.body.userId)}, process.env.ACCESS_TOKEN_SECRET, {expiresIn: "1h"})  // Send JWT to user via HTTP response
+                let token = jwt.sign({name: req.body.name, role: await db.getUserRole(req.body.name)}, process.env.ACCESS_TOKEN_SECRET, {expiresIn: "1h"})  // Send JWT to user via HTTP response
                 res.cookie('token', token, {httpOnly: true}).status(200).redirect("/granted")
                 
             }
@@ -68,8 +68,17 @@ app.get('/granted', authenticateToken, (req, res) => {
     res.render('start.ejs')
 })
 
-app.get('/admin', (req, res) => {
-    res.render('admin.ejs')
+app.get('/admin', async (req, res) => {
+    let token = jwt.verify(req.cookies.token, process.env.ACCESS_TOKEN_SECRET)
+    console.log(token.role)
+    if (token.role == 'admin')
+    {
+        let users = await db.getAll()
+        res.render('admin.ejs', {users: users})
+    }
+    else{
+        res.status(401).render('fail.ejs')
+    }
 })
 
 app.listen(3000)
