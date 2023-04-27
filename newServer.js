@@ -68,7 +68,7 @@ app.get('/granted', authenticateToken, (req, res) => {
     res.render('start.ejs')
 })
 
-app.get('/admin', async (req, res) => {
+app.get('/admin', authenticateToken, async (req, res) => {
     let token = jwt.verify(req.cookies.token, process.env.ACCESS_TOKEN_SECRET)
     console.log(token.role)
     if (token.role == 'admin')
@@ -79,6 +79,45 @@ app.get('/admin', async (req, res) => {
     else{
         res.status(401).render('fail.ejs')
     }
+})
+
+app.get('/student1', authenticateToken, (req, res) => {
+    let token = jwt.verify(req.cookies.token, process.env.ACCESS_TOKEN_SECRET)
+    console.log(token.role)
+    if (token.role == 'admin' || token.role == 'student1' || token.role == 'teacher')
+    {
+        res.render('student1.ejs')
+    }
+    else{
+        res.status(401).render('fail.ejs')
+    }
+})
+
+app.get('/student2', authenticateToken, (req, res) => {
+    app.get('/student1', authenticateToken, (req, res) => {
+        let token = jwt.verify(req.cookies.token, process.env.ACCESS_TOKEN_SECRET)
+        console.log(token.role)
+        if (token.role == 'admin' || token.role == 'student2' || token.role == 'teacher')
+        {
+            res.render('student2.ejs', {user: token.name})
+        }
+        else{
+            res.status(401).render('fail.ejs')
+        }
+    })
+})
+
+app.get('/teacher', authenticateToken, (req, res) => {
+    let token = jwt.verify(req.cookies.token, process.env.ACCESS_TOKEN_SECRET)
+    console.log(token.role)
+    if (token.role == 'admin' || token.role == 'teacher')
+    {
+        res.render('teacher.ejs')
+    }
+    else{
+        res.status(401).render('fail.ejs')
+    }
+
 })
 
 app.listen(3000)
