@@ -1,41 +1,52 @@
-const express = require("express")
+const express = require('express')
 const app = express()
-app.set('view-engine', 'ejs')
-const bcrypt = require('bcrypt')
-const jwt = require("jsonwebtoken")
 const db = require('./database')
-const tokenArray = []
-require("dotenv").config()
+const jwt = require('jsonwebtoken')
+const bcrypt = require('bcrypt')
+const cookieParser = require('cookie-parser')
+require('dotenv').config()
 
-app.use(express.urlencoded({extended:false}))
+app.set('view-engine', 'ejs')
+app.use(express.urlencoded({extended: false}))
 app.use(express.json())
+app.use(cookieParser())
 
+var currentKey = "" // Retrieve from user's JWT via HTTP header
+var currentPassword = ""
 
-app.get('/', (req, res) =>{
-//    var token = jwt.sign("username", process.env.TOKEN)
-    res.redirect('/LOGIN')
+function authenticateToken(req,res,next){
+    try {
+        let authHeader = req.cookies.token
+        console.log(authHeader) 
+        let user = jwt.verify(authHeader, process.env.ACCESS_TOKEN_SECRET)
+        next()
+        return
+    }
+    catch(err){
+        res.status(401, {message: err.message}).render('fail.ejs')
+    }
+}
+
+app.get('/', (req,res) => {
+    res.redirect('/identify')
 })
 
-app.get('/LOGIN', (req,res) => {
-    res.render('login.ejs',  {registered:req.query.registered})
-})
-
-app.post('/LOGIN', async (req, res) => {
-
-    if(req.body.name !== "" && req.body.password !== "" && !(Object.keys(await db.checkUser(req.body.name)).length == 0)){
-        try{
-            let val = await db.verifyUser(req.body.name, req.body.password)
-            var token = jwt.sign(req.body.name,process.env.TOKEN)
-            if (Object.keys(val).length == 0 && !(await bcrypt.compare(req.body.password, val.password))){
+app.post('/identify', async (req, res) => {
+    if(req.body.name !== "" && req.body.password !== "" && !!(await db.userExists(req.body.name))){
+        try{       
+            console.log(await db.userExists(req.body.name))
+            let encPass = (await db.verifyUser(req.body.name))
+            console.log(encPass)
+            let userVerification = (!!encPass && (await bcrypt.compare(req.body.password, encPass.password)))
+            console.log(userVerification)
+            if (!userVerification){   // if user input does not match DB entry
+                console.log('hi')
                 res.render('fail.ejs')
             }
-            else if(tokenArray.indexOf(token) === -1){
-               res.render('start.ejs')
-               tokenArray.push(token)
-               console.log("JWT: "+ token)
-            }
             else{
-                res.render('fail.ejs', {alreadyLoggedIn: true})
+                let token = jwt.sign({name: req.body.name, role: await db.getUserRole(req.body.name)}, process.env.ACCESS_TOKEN_SECRET, {expiresIn: "1h"})  // Send JWT to user via HTTP response
+                res.cookie('token', token, {httpOnly: true}).status(200).redirect("/granted")
+                
             }
         }
         catch (e){
@@ -45,44 +56,68 @@ app.post('/LOGIN', async (req, res) => {
         }
     }
     else{
-        res.redirect('/LOGIN')
+        res.redirect('/identify')
     }
-
 })
 
-app.get('/register', (req, res) => {
-    res.render('register.ejs', {validPwd:req.query.validPwd, validUser:req.query.validUser})
+app.get('/identify', (req, res) => {
+    res.render('identify.ejs')
 })
 
-app.post('/register', async (req, res) => {
-    try {
-        if(req.body.name !== "" && req.body.password !== "" && req.body.passwordConfirm !== ""){
-            if (req.body.password !== req.body.passwordConfirm){
-                res.redirect('/register?validPwd=false')
-            }
-            else
-{            let val = await db.checkUser(req.body.name)
-            
-                if (typeof val !== "undefined" && Object.keys(val).length == 0){
-                    await db.registerUser(req.body.name, req.body.password)
-                    res.redirect('/LOGIN?registered=true')
-                }
-                else{
-                    res.redirect('/register?validUser=false')
-                }
-}            }
-        else{
-            res.redirect('/register')
+app.get('/granted', authenticateToken, (req, res) => {
+    res.render('start.ejs')
+})
+
+app.get('/admin', authenticateToken, async (req, res) => {
+    let token = jwt.verify(req.cookies.token, process.env.ACCESS_TOKEN_SECRET)
+    console.log(token.role)
+    if (token.role == 'admin')
+    {
+        let users = await db.getAll()
+        res.render('admin.ejs', {users: users})
+    }
+    else{
+        res.status(401).render('fail.ejs')
+    }
+})
+
+app.get('/student1', authenticateToken, (req, res) => {
+    let token = jwt.verify(req.cookies.token, process.env.ACCESS_TOKEN_SECRET)
+    console.log(token.role)
+    if (token.role == 'admin' || token.role == 'student1' || token.role == 'teacher')
+    {
+        res.render('student1.ejs')
+    }
+    else{
+        res.status(401).render('fail.ejs')
+    }
+})
+
+app.get('/student2', authenticateToken, (req, res) => {
+    app.get('/student1', authenticateToken, (req, res) => {
+        let token = jwt.verify(req.cookies.token, process.env.ACCESS_TOKEN_SECRET)
+        console.log(token.role)
+        if (token.role == 'admin' || token.role == 'student2' || token.role == 'teacher')
+        {
+            res.render('student2.ejs', {user: token.name})
         }
-            
-    }
-    catch (e){
-        console.log("Error", e.stack)
-        console.log("Error", e.name)
-        console.log("Error", e.message)
-    }
+        else{
+            res.status(401).render('fail.ejs')
+        }
+    })
 })
-/*app.get('/anotherview', (req, res) =>
-    res.render('view2.ejs'))
-*/
-app.listen(5000)
+
+app.get('/teacher', authenticateToken, (req, res) => {
+    let token = jwt.verify(req.cookies.token, process.env.ACCESS_TOKEN_SECRET)
+    console.log(token.role)
+    if (token.role == 'admin' || token.role == 'teacher')
+    {
+        res.render('teacher.ejs')
+    }
+    else{
+        res.status(401).render('fail.ejs')
+    }
+
+})
+
+app.listen(3000)
